@@ -5,3 +5,17 @@ ktor:
   application:
     modules:
       - com.example.ApplicationKt.module
+
+jwt:
+  secret: "change-me-please"
+  issuer: "okak"
+  audience: "okak-users"
+  realm: "okak"
+  expiresInMinutes: 60
+
+db:
+  url: "jdbc:postgresql://localhost:5432/okak"
+  user: "okak"
+  password: "okak"
+  driver: "org.postgresql.Driver"
+
