@@ -1,5 +1,8 @@
 package com.example
 
+import com.example.auth.TokenService
+import com.example.auth.authRoutes
+import com.example.users.UserRepository
 import io.ktor.server.application.Application
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
@@ -9,10 +12,14 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class HealthResponse(val status: String)
 
-fun Application.configureRouting() {
+fun Application.configureRouting(
+    users: UserRepository,
+    tokens: TokenService
+) {
     routing {
         get("/health") {
             call.respond(HealthResponse("ok"))
         }
+        authRoutes(users, tokens)
     }
 }
