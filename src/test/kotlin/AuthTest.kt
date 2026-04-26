@@ -1,6 +1,8 @@
 package com.example
 
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -9,6 +11,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -52,5 +56,27 @@ class AuthTest {
             setBody("""{"email":"notemail","password":"qwerty123"}""")
         }
         assertEquals(HttpStatusCode.BadRequest, badEmail.status)
+    }
+
+    @Test
+    fun `me endpoint returns user when token is provided`() = testApplication {
+        application { module() }
+        val client = createClient {
+            install(ContentNegotiation) { json() }
+        }
+
+        val regResp = client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"email":"me@example.com","password":"qwerty123"}""")
+        }
+        val token = Json.parseToJsonElement(regResp.bodyAsText())
+            .let { (it as kotlinx.serialization.json.JsonObject)["accessToken"]!!.jsonPrimitive.content }
+
+        val meResp = client.get("/user/me") { bearerAuth(token) }
+        assertEquals(HttpStatusCode.OK, meResp.status)
+        assertTrue(meResp.bodyAsText().contains("me@example.com"))
+
+        val noToken = client.get("/user/me")
+        assertEquals(HttpStatusCode.Unauthorized, noToken.status)
     }
 }
