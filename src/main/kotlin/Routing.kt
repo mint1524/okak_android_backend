@@ -2,6 +2,9 @@ package com.example
 
 import com.example.auth.TokenService
 import com.example.auth.authRoutes
+import com.example.chats.ChatRepository
+import com.example.chats.MessageRepository
+import com.example.chats.chatRoutes
 import com.example.users.UserRepository
 import com.example.users.userRoutes
 import io.ktor.server.application.Application
@@ -15,7 +18,9 @@ data class HealthResponse(val status: String)
 
 fun Application.configureRouting(
     users: UserRepository,
-    tokens: TokenService
+    tokens: TokenService,
+    chats: ChatRepository,
+    messages: MessageRepository
 ) {
     routing {
         get("/health") {
@@ -23,5 +28,6 @@ fun Application.configureRouting(
         }
         authRoutes(users, tokens)
         userRoutes(users)
+        chatRoutes(chats, messages)
     }
 }
