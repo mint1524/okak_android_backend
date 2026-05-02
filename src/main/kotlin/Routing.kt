@@ -5,6 +5,7 @@ import com.example.auth.authRoutes
 import com.example.chats.ChatRepository
 import com.example.chats.MessageRepository
 import com.example.chats.chatRoutes
+import com.example.llm.LlmClient
 import com.example.users.UserRepository
 import com.example.users.userRoutes
 import io.ktor.server.application.Application
@@ -20,7 +21,8 @@ fun Application.configureRouting(
     users: UserRepository,
     tokens: TokenService,
     chats: ChatRepository,
-    messages: MessageRepository
+    messages: MessageRepository,
+    llm: LlmClient
 ) {
     routing {
         get("/health") {
@@ -28,6 +30,6 @@ fun Application.configureRouting(
         }
         authRoutes(users, tokens)
         userRoutes(users)
-        chatRoutes(chats, messages)
+        chatRoutes(chats, messages, llm)
     }
 }

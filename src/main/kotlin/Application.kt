@@ -4,6 +4,7 @@ import com.example.auth.TokenService
 import com.example.chats.InMemoryChatRepository
 import com.example.chats.InMemoryMessageRepository
 import com.example.config.loadConfig
+import com.example.llm.MockLlmClient
 import com.example.plugins.configureCors
 import com.example.plugins.configureMonitoring
 import com.example.plugins.configureSecurity
@@ -21,11 +22,12 @@ fun Application.module() {
     val tokens = TokenService(config.jwt)
     val chats = InMemoryChatRepository()
     val messages = InMemoryMessageRepository()
+    val llm = MockLlmClient()
 
     configureMonitoring()
     configureSerialization()
     configureStatusPages()
     configureCors()
     configureSecurity(config.jwt)
-    configureRouting(users, tokens, chats, messages)
+    configureRouting(users, tokens, chats, messages, llm)
 }
