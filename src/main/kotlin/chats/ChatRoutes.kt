@@ -4,6 +4,8 @@ import com.example.llm.LlmClient
 import com.example.llm.LlmMessage
 import com.example.plugins.ErrorResponse
 import com.example.plugins.JWT_AUTH_NAME
+import com.example.subscriptions.Plans
+import com.example.subscriptions.SubscriptionRepository
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
@@ -20,7 +22,8 @@ import java.util.UUID
 fun Route.chatRoutes(
     chats: ChatRepository,
     messages: MessageRepository,
-    llm: LlmClient
+    llm: LlmClient,
+    subs: SubscriptionRepository
 ) {
     authenticate(JWT_AUTH_NAME) {
         route("/chats") {
@@ -71,6 +74,28 @@ fun Route.chatRoutes(
                     call.respond(HttpStatusCode.NotFound, ErrorResponse("CHAT_NOT_FOUND", "chat not found"))
                     return@post
                 }
+
+                val sub = subs.findActive(userId)
+                if (sub == null) {
+                    call.respond(
+                        HttpStatusCode.Forbidden,
+                        ErrorResponse("SUBSCRIPTION_REQUIRED", "active subscription required")
+                    )
+                    return@post
+                }
+                val plan = Plans.byId(sub.planId)
+                if (plan == null) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse("BAD_PLAN", "plan not found"))
+                    return@post
+                }
+                if (sub.requestsUsed >= plan.requestLimit || sub.tokensUsed >= plan.tokenLimit) {
+                    call.respond(
+                        HttpStatusCode.TooManyRequests,
+                        ErrorResponse("LIMIT_EXCEEDED", "request or token limit exceeded")
+                    )
+                    return@post
+                }
+
                 val req = call.receive<SendMessageRequest>()
                 val text = req.content.trim()
                 if (text.isEmpty()) {
@@ -83,6 +108,7 @@ fun Route.chatRoutes(
                 val result = llm.complete(history)
                 val assistantMsg = messages.add(chatId, MessageRole.ASSISTANT, result.content, result.tokensUsed)
                 chats.touch(chatId)
+                subs.incrementUsage(userId, requests = 1, tokens = result.tokensUsed)
 
                 call.respond(
                     SendMessageResponse(
