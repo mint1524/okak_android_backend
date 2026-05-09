@@ -1,5 +1,7 @@
 package com.example.chats
 
+import com.example.llm.LlmClient
+import com.example.llm.LlmMessage
 import com.example.plugins.ErrorResponse
 import com.example.plugins.JWT_AUTH_NAME
 import io.ktor.http.HttpStatusCode
@@ -17,7 +19,8 @@ import java.util.UUID
 
 fun Route.chatRoutes(
     chats: ChatRepository,
-    messages: MessageRepository
+    messages: MessageRepository,
+    llm: LlmClient
 ) {
     authenticate(JWT_AUTH_NAME) {
         route("/chats") {
@@ -58,6 +61,36 @@ fun Route.chatRoutes(
                 chats.delete(chatId)
                 messages.deleteByChat(chatId)
                 call.respond(DeleteChatResponse(true))
+            }
+
+            post("/{chatId}/messages") {
+                val userId = call.userId() ?: return@post call.unauthorized()
+                val chatId = call.chatId() ?: return@post call.badId()
+                val chat = chats.findById(chatId)
+                if (chat == null || chat.userId != userId) {
+                    call.respond(HttpStatusCode.NotFound, ErrorResponse("CHAT_NOT_FOUND", "chat not found"))
+                    return@post
+                }
+                val req = call.receive<SendMessageRequest>()
+                val text = req.content.trim()
+                if (text.isEmpty()) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("EMPTY_MESSAGE", "message is empty"))
+                    return@post
+                }
+
+                val userMsg = messages.add(chatId, MessageRole.USER, text)
+                val history = messages.listByChat(chatId).map { LlmMessage(it.role.name.lowercase(), it.content) }
+                val result = llm.complete(history)
+                val assistantMsg = messages.add(chatId, MessageRole.ASSISTANT, result.content, result.tokensUsed)
+                chats.touch(chatId)
+
+                call.respond(
+                    SendMessageResponse(
+                        userMessage = userMsg.toDto(),
+                        assistantMessage = assistantMsg.toDto(),
+                        tokensUsed = result.tokensUsed
+                    )
+                )
             }
         }
     }
