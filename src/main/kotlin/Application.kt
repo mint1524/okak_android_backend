@@ -1,6 +1,8 @@
 package com.example
 
 import com.example.auth.TokenService
+import com.example.chats.InMemoryChatRepository
+import com.example.chats.InMemoryMessageRepository
 import com.example.config.loadConfig
 import com.example.plugins.configureCors
 import com.example.plugins.configureMonitoring
@@ -17,11 +19,13 @@ fun Application.module() {
 
     val users = InMemoryUserRepository()
     val tokens = TokenService(config.jwt)
+    val chats = InMemoryChatRepository()
+    val messages = InMemoryMessageRepository()
 
     configureMonitoring()
     configureSerialization()
     configureStatusPages()
     configureCors()
     configureSecurity(config.jwt)
-    configureRouting(users, tokens)
+    configureRouting(users, tokens, chats, messages)
 }
