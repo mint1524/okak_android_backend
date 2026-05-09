@@ -12,6 +12,7 @@ class ServerTest {
 
     @Test
     fun `health returns ok`() = testApplication {
+        withInMemoryDb()
         application { module() }
         val response = client.get("/health")
         assertEquals(HttpStatusCode.OK, response.status)

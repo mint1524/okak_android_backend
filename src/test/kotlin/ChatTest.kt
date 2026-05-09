@@ -24,6 +24,7 @@ class ChatTest {
 
     @Test
     fun `chat lifecycle and llm reply`() = testApplication {
+        withInMemoryDb()
         application { module() }
         val client = createClient {
             install(ContentNegotiation) { json() }
@@ -83,6 +84,7 @@ class ChatTest {
 
     @Test
     fun `cannot access another users chat`() = testApplication {
+        withInMemoryDb()
         application { module() }
         val client = createClient {
             install(ContentNegotiation) { json() }
