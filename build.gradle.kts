@@ -26,6 +26,7 @@ dependencies {
     implementation(ktorLibs.server.cors)
     implementation(ktorLibs.server.auth)
     implementation(ktorLibs.server.auth.jwt)
+    implementation(libs.jbcrypt)
     implementation(libs.logback.classic)
 
     testImplementation(kotlin("test"))
