@@ -24,6 +24,8 @@ dependencies {
     implementation(ktorLibs.server.callLogging)
     implementation(ktorLibs.server.defaultHeaders)
     implementation(ktorLibs.server.cors)
+    implementation(ktorLibs.server.auth)
+    implementation(ktorLibs.server.auth.jwt)
     implementation(libs.logback.classic)
 
     testImplementation(kotlin("test"))
