@@ -19,29 +19,27 @@ curl http://localhost:8080/health
 
 Тесты используют in-memory репозитории (`USE_IN_MEMORY_DB=true`), Postgres не нужен.
 
-## Деплой в Dokploy
+## Деплой
 
-1. В Dokploy создать проект → Application → Compose.
-2. Source: GitHub `mint1524/okak_android_backend`, branch `main`.
-3. Compose Path: `docker-compose.yml`.
-4. Environment variables (вкладка Environment):
-   ```
-   POSTGRES_DB=okak
-   POSTGRES_USER=okak
-   POSTGRES_PASSWORD=<сильный пароль>
-   JWT_SECRET=<минимум 32 символа>
-   APP_PORT=8080
-   ```
-5. Domains: добавить домен и включить HTTPS (Let's Encrypt). Traefik сам перенаправит на сервис `app:8080`.
-6. Deploy. После первого старта Flyway создаст схему автоматически.
+Шпаргалка:
+1. В Dokploy: Project → New Application → Compose, репо `mint1524/okak_android_backend`, branch `main`.
+2. Environment: переменные из `.env.example`, обязательно сменить `JWT_SECRET` и `POSTGRES_PASSWORD`. Если нужен реальный LLM — `LLM_PROVIDER=groq` + `LLM_API_KEY=gsk_...`.
+3. Domains: домен → service `app` → port `8080`, HTTPS on.
+4. Deploy.
+
+Полный гайд (VPS + бэкапы + откат + мониторинг): [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ### Health check
 
 `GET /health` отдаёт `{"status":"ok"}`.
 
-### Обновление
+## LLM провайдер
 
-Коммит в `main` → Dokploy подтянет новый образ (auto-deploy если включён) или ручной Redeploy.
+`LLM_PROVIDER=mock` (по умолчанию) — заглушка для разработки и тестов.
+
+`LLM_PROVIDER=groq` — реальный Groq (OpenAI-совместимый API). Получить ключ на https://console.groq.com/keys, прописать в `LLM_API_KEY`. Модель по умолчанию `llama-3.3-70b-versatile`. Под капотом Ktor-клиент делает один POST на `${LLM_BASE_URL}/chat/completions`. При сетевой ошибке/таймауте отдаётся вежливый fallback вместо 500-ки.
+
+Чтобы добавить ещё одного провайдера (OpenAI, Gemini и т.п.) — реализовать `LlmClient` в `src/main/kotlin/llm/` и добавить ветку в `Application.module()`.
 
 ## Эндпоинты
 

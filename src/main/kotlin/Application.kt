@@ -9,6 +9,8 @@ import com.example.chats.InMemoryMessageRepository
 import com.example.chats.MessageRepository
 import com.example.config.loadConfig
 import com.example.database.DatabaseFactory
+import com.example.llm.GroqLlmClient
+import com.example.llm.LlmClient
 import com.example.llm.MockLlmClient
 import com.example.plugins.configureCors
 import com.example.plugins.configureMonitoring
@@ -47,7 +49,21 @@ fun Application.module() {
     }
 
     val tokens = TokenService(config.jwt)
-    val llm = MockLlmClient()
+    val llm: LlmClient = when (config.llm.provider) {
+        "groq" -> {
+            if (config.llm.apiKey.isBlank()) {
+                log.warn("LLM_PROVIDER=groq, но LLM_API_KEY пустой — откатываюсь на mock")
+                MockLlmClient()
+            } else {
+                log.info("LLM provider=groq, model=${config.llm.model}")
+                GroqLlmClient(config.llm)
+            }
+        }
+        else -> {
+            log.info("LLM provider=mock")
+            MockLlmClient()
+        }
+    }
 
     configureMonitoring()
     configureSerialization()
