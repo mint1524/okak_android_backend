@@ -2,6 +2,7 @@ package com.example.users
 
 import com.example.plugins.ErrorResponse
 import com.example.plugins.JWT_AUTH_NAME
+import com.example.subscriptions.SubscriptionRepository
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.jwt.JWTPrincipal
@@ -20,7 +21,7 @@ data class UserDto(
     val subscriptionStatus: String
 )
 
-fun Route.userRoutes(users: UserRepository) {
+fun Route.userRoutes(users: UserRepository, subs: SubscriptionRepository) {
     authenticate(JWT_AUTH_NAME) {
         route("/user") {
             get("/me") {
@@ -30,12 +31,14 @@ fun Route.userRoutes(users: UserRepository) {
                     call.respond(HttpStatusCode.Unauthorized, ErrorResponse("UNAUTHORIZED", "no token"))
                     return@get
                 }
-                val user = users.findById(UUID.fromString(userId))
+                val uuid = UUID.fromString(userId)
+                val user = users.findById(uuid)
                 if (user == null) {
                     call.respond(HttpStatusCode.NotFound, ErrorResponse("USER_NOT_FOUND", "user not found"))
                     return@get
                 }
-                call.respond(UserDto(user.id.toString(), user.email, "inactive"))
+                val status = if (subs.findActive(uuid) != null) "active" else "inactive"
+                call.respond(UserDto(user.id.toString(), user.email, status))
             }
         }
     }

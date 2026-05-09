@@ -48,6 +48,20 @@ class ChatTest {
         val arr = Json.parseToJsonElement(list.bodyAsText()).jsonArray
         assertEquals(1, arr.size)
 
+        val noSub = client.post("/chats/$chatId/messages") {
+            contentType(ContentType.Application.Json)
+            bearerAuth(token)
+            setBody("""{"content":"привет"}""")
+        }
+        assertEquals(HttpStatusCode.Forbidden, noSub.status)
+
+        val verify = client.post("/subscriptions/verify") {
+            contentType(ContentType.Application.Json)
+            bearerAuth(token)
+            setBody("""{"productId":"basic_monthly","purchaseToken":"fake-token"}""")
+        }
+        assertEquals(HttpStatusCode.OK, verify.status)
+
         val send = client.post("/chats/$chatId/messages") {
             contentType(ContentType.Application.Json)
             bearerAuth(token)
