@@ -33,7 +33,6 @@ dependencies {
     implementation(libs.postgres)
     implementation(libs.hikari)
     implementation(libs.flyway.core)
-    implementation(libs.flyway.postgres)
     implementation(libs.logback.classic)
 
     testImplementation(kotlin("test"))
