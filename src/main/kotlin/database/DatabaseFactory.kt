@@ -41,4 +41,15 @@ object DatabaseFactory {
         (dataSource as? HikariDataSource)?.close()
         dataSource = null
     }
+
+    fun isHealthy(): Boolean {
+        val ds = dataSource ?: return false
+        return runCatching {
+            ds.connection.use { conn ->
+                conn.createStatement().use { st ->
+                    st.executeQuery("SELECT 1").use { it.next() }
+                }
+            }
+        }.getOrDefault(false)
+    }
 }
