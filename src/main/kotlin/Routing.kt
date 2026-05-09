@@ -3,6 +3,7 @@ package com.example
 import com.example.auth.TokenService
 import com.example.auth.authRoutes
 import com.example.users.UserRepository
+import com.example.users.userRoutes
 import io.ktor.server.application.Application
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
@@ -21,5 +22,6 @@ fun Application.configureRouting(
             call.respond(HealthResponse("ok"))
         }
         authRoutes(users, tokens)
+        userRoutes(users)
     }
 }
