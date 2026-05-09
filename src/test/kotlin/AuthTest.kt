@@ -21,6 +21,7 @@ class AuthTest {
 
     @Test
     fun `register and login flow`() = testApplication {
+        withInMemoryDb()
         application { module() }
         val client = createClient {
             install(ContentNegotiation) { json() }
@@ -60,6 +61,7 @@ class AuthTest {
 
     @Test
     fun `me endpoint returns user when token is provided`() = testApplication {
+        withInMemoryDb()
         application { module() }
         val client = createClient {
             install(ContentNegotiation) { json() }

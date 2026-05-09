@@ -20,7 +20,8 @@ data class DbConfig(
 
 data class AppConfig(
     val jwt: JwtConfig,
-    val db: DbConfig
+    val db: DbConfig,
+    val useInMemoryDb: Boolean
 )
 
 fun Application.loadConfig(): AppConfig {
@@ -38,7 +39,8 @@ fun Application.loadConfig(): AppConfig {
             user = cfg.stringOrEnv("db.user", "DB_USER", "okak"),
             password = cfg.stringOrEnv("db.password", "DB_PASSWORD", "okak"),
             driver = cfg.stringOrEnv("db.driver", "DB_DRIVER", "org.postgresql.Driver")
-        )
+        ),
+        useInMemoryDb = cfg.stringOrEnv("app.useInMemoryDb", "USE_IN_MEMORY_DB", "false").toBoolean()
     )
 }
 
