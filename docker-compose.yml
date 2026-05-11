@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-okak}
+      POSTGRES_USER: ${POSTGRES_USER:-okak}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-okak}
+    volumes:
+      - okak_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-okak}"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      DB_URL: "jdbc:postgresql://db:5432/${POSTGRES_DB:-okak}"
+      DB_USER: "${POSTGRES_USER:-okak}"
+      DB_PASSWORD: "${POSTGRES_PASSWORD:-okak}"
+      JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET in .env}"
+      JWT_ISSUER: "okak"
+      JWT_AUDIENCE: "okak-users"
+      JWT_REALM: "okak"
+      JWT_EXPIRES_MIN: "60"
+      USE_IN_MEMORY_DB: "false"
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+volumes:
+  okak_db:
