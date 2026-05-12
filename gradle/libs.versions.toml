@@ -5,7 +5,7 @@ jbcrypt = "0.4"
 exposed = "0.56.0"
 postgres = "42.7.4"
 hikari = "6.2.1"
-flyway = "10.20.1"
+flyway = "9.22.3"
 
 [libraries]
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
@@ -16,7 +16,6 @@ exposed-java-time = { module = "org.jetbrains.exposed:exposed-java-time", versio
 postgres = { module = "org.postgresql:postgresql", version.ref = "postgres" }
 hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
-flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
