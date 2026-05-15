@@ -1,30 +1,68 @@
-# okak-app-android-back
+# okak backend
 
-This project was created using the [Ktor Project Generator](https://start.ktor.io).
+Ktor + Postgres + Exposed + Flyway. Подписочный LLM-чат.
 
-Here are some useful links to get you started:
+## Локально
 
-* [Ktor Documentation](https://ktor.io/docs/home.html)
-* [Ktor GitHub page](https://github.com/ktorio/ktor)
-* [Ktor Slack chat](https://app.slack.com/client/T09229ZC6/C0A974TJ9). [Request an invite](https://surveys.jetbrains.com/s3/kotlin-slack-sign-up).
-
-## Features
-
-Here's a list of features included in this project:
-
-| Name | Description |
-|------|-------------|
-
-## Building & Running
-
-To build or run the project, use one of the following tasks:
-
-| Task | Description |
-|------|-------------|
-
-If the server starts successfully, you'll see the following output:
-
+```bash
+cp .env.example .env
+# заполни JWT_SECRET и при желании APP_PORT/POSTGRES_*
+docker compose up -d
+curl http://localhost:8080/health
 ```
-2024-12-04 14:32:45.584 [main] INFO  Application - Application started in 0.303 seconds.
-2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
+
+## Тесты
+
+```bash
+./gradlew test
 ```
+
+Тесты используют in-memory репозитории (`USE_IN_MEMORY_DB=true`), Postgres не нужен.
+
+## Деплой в Dokploy
+
+1. В Dokploy создать проект → Application → Compose.
+2. Source: GitHub `mint1524/okak_android_backend`, branch `main`.
+3. Compose Path: `docker-compose.yml`.
+4. Environment variables (вкладка Environment):
+   ```
+   POSTGRES_DB=okak
+   POSTGRES_USER=okak
+   POSTGRES_PASSWORD=<сильный пароль>
+   JWT_SECRET=<минимум 32 символа>
+   APP_PORT=8080
+   ```
+5. Domains: добавить домен и включить HTTPS (Let's Encrypt). Traefik сам перенаправит на сервис `app:8080`.
+6. Deploy. После первого старта Flyway создаст схему автоматически.
+
+### Health check
+
+`GET /health` отдаёт `{"status":"ok"}`.
+
+### Обновление
+
+Коммит в `main` → Dokploy подтянет новый образ (auto-deploy если включён) или ручной Redeploy.
+
+## Эндпоинты
+
+| Метод | Путь | Назначение |
+|---|---|---|
+| POST | /auth/register | регистрация |
+| POST | /auth/login | логин |
+| GET | /user/me | профиль + статус подписки |
+| GET | /chats | список чатов |
+| POST | /chats | создать чат |
+| DELETE | /chats/{id} | удалить чат |
+| GET | /chats/{id}/messages | история сообщений |
+| POST | /chats/{id}/messages | отправить сообщение, получить ответ от LLM |
+| GET | /subscriptions/plans | доступные тарифы |
+| GET | /subscriptions/status | статус подписки |
+| POST | /subscriptions/verify | активировать подписку (заглушка под Google Play) |
+
+## Стек
+
+- Ktor 3.4 (Netty)
+- Postgres 16, Exposed 0.56 DSL, HikariCP
+- Flyway 9.22.3 (миграции в `src/main/resources/db/migration`)
+- jBCrypt, JWT (HS256)
+- Mock LLM в `llm/LlmClient.kt` — заменить на реальный провайдер за фичефлагом
