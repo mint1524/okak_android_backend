@@ -31,6 +31,13 @@ services:
       JWT_REALM: "okak"
       JWT_EXPIRES_MIN: "60"
       USE_IN_MEMORY_DB: "false"
+      LLM_PROVIDER: "${LLM_PROVIDER:-mock}"
+      LLM_API_KEY: "${LLM_API_KEY:-}"
+      LLM_MODEL: "${LLM_MODEL:-llama-3.3-70b-versatile}"
+      LLM_BASE_URL: "${LLM_BASE_URL:-https://api.groq.com/openai/v1}"
+      LLM_SYSTEM_PROMPT: "${LLM_SYSTEM_PROMPT:-Ты дружелюбный ассистент. Отвечай по-русски, кратко и по делу.}"
+      LLM_MAX_TOKENS: "${LLM_MAX_TOKENS:-512}"
+      LLM_TEMPERATURE: "${LLM_TEMPERATURE:-0.7}"
     ports:
       - "${APP_PORT:-8080}:8080"
 

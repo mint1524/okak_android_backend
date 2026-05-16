@@ -1,15 +1,18 @@
 # okak backend
 
-Ktor + Postgres + Exposed + Flyway. Подписочный LLM-чат.
+Серверная часть мобильного приложения: подписочный чат с LLM-моделью.
+Стек — Ktor, PostgreSQL, Exposed, Flyway.
 
-## Локально
+## Локальный запуск
 
 ```bash
 cp .env.example .env
-# заполни JWT_SECRET и при желании APP_PORT/POSTGRES_*
 docker compose up -d
 curl http://localhost:8080/health
 ```
+
+В `.env` задаются `JWT_SECRET`, параметры PostgreSQL (`POSTGRES_*`, `APP_PORT`) и
+настройки LLM-провайдера.
 
 ## Тесты
 
@@ -17,31 +20,19 @@ curl http://localhost:8080/health
 ./gradlew test
 ```
 
-Тесты используют in-memory репозитории (`USE_IN_MEMORY_DB=true`), Postgres не нужен.
+Тесты работают на in-memory репозиториях (`USE_IN_MEMORY_DB=true`), внешняя БД не требуется.
 
-## Деплой в Dokploy
+## LLM-провайдер
 
-1. В Dokploy создать проект → Application → Compose.
-2. Source: GitHub `mint1524/okak_android_backend`, branch `main`.
-3. Compose Path: `docker-compose.yml`.
-4. Environment variables (вкладка Environment):
-   ```
-   POSTGRES_DB=okak
-   POSTGRES_USER=okak
-   POSTGRES_PASSWORD=<сильный пароль>
-   JWT_SECRET=<минимум 32 символа>
-   APP_PORT=8080
-   ```
-5. Domains: добавить домен и включить HTTPS (Let's Encrypt). Traefik сам перенаправит на сервис `app:8080`.
-6. Deploy. После первого старта Flyway создаст схему автоматически.
+Провайдер выбирается переменной `LLM_PROVIDER`:
 
-### Health check
+- `mock` — детерминированная заглушка для разработки и тестов;
+- `groq` — OpenAI-совместимый endpoint (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`,
+  модель по умолчанию `llama-3.3-70b-versatile`).
 
-`GET /health` отдаёт `{"status":"ok"}`.
-
-### Обновление
-
-Коммит в `main` → Dokploy подтянет новый образ (auto-deploy если включён) или ручной Redeploy.
+Запрос уходит одним POST на `${LLM_BASE_URL}/chat/completions`; при сетевой ошибке или
+таймауте возвращается безопасный fallback вместо 500. Реализации лежат в
+`src/main/kotlin/llm`. Новый провайдер — это реализация `LlmClient` и ветка в `Application.module()`.
 
 ## Эндпоинты
 
@@ -49,20 +40,21 @@ curl http://localhost:8080/health
 |---|---|---|
 | POST | /auth/register | регистрация |
 | POST | /auth/login | логин |
-| GET | /user/me | профиль + статус подписки |
+| POST | /auth/refresh | обновление токена |
+| GET | /user/me | профиль и статус подписки |
 | GET | /chats | список чатов |
 | POST | /chats | создать чат |
+| PATCH | /chats/{id} | переименовать чат |
 | DELETE | /chats/{id} | удалить чат |
 | GET | /chats/{id}/messages | история сообщений |
-| POST | /chats/{id}/messages | отправить сообщение, получить ответ от LLM |
+| POST | /chats/{id}/messages | отправить сообщение, получить ответ LLM |
 | GET | /subscriptions/plans | доступные тарифы |
 | GET | /subscriptions/status | статус подписки |
-| POST | /subscriptions/verify | активировать подписку (заглушка под Google Play) |
+| POST | /subscriptions/verify | активация подписки |
 
 ## Стек
 
 - Ktor 3.4 (Netty)
-- Postgres 16, Exposed 0.56 DSL, HikariCP
-- Flyway 9.22.3 (миграции в `src/main/resources/db/migration`)
+- PostgreSQL 16, Exposed DSL, HikariCP
+- Flyway (миграции в `src/main/resources/db/migration`)
 - jBCrypt, JWT (HS256)
-- Mock LLM в `llm/LlmClient.kt` — заменить на реальный провайдер за фичефлагом

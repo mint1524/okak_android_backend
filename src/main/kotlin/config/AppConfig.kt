@@ -18,9 +18,20 @@ data class DbConfig(
     val driver: String
 )
 
+data class LlmConfig(
+    val provider: String,
+    val apiKey: String,
+    val baseUrl: String,
+    val model: String,
+    val systemPrompt: String,
+    val maxTokens: Int,
+    val temperature: Double
+)
+
 data class AppConfig(
     val jwt: JwtConfig,
     val db: DbConfig,
+    val llm: LlmConfig,
     val useInMemoryDb: Boolean
 )
 
@@ -39,6 +50,15 @@ fun Application.loadConfig(): AppConfig {
             user = cfg.stringOrEnv("db.user", "DB_USER", "okak"),
             password = cfg.stringOrEnv("db.password", "DB_PASSWORD", "okak"),
             driver = cfg.stringOrEnv("db.driver", "DB_DRIVER", "org.postgresql.Driver")
+        ),
+        llm = LlmConfig(
+            provider = cfg.stringOrEnv("llm.provider", "LLM_PROVIDER", "mock").lowercase(),
+            apiKey = cfg.stringOrEnv("llm.apiKey", "LLM_API_KEY", ""),
+            baseUrl = cfg.stringOrEnv("llm.baseUrl", "LLM_BASE_URL", "https://api.groq.com/openai/v1"),
+            model = cfg.stringOrEnv("llm.model", "LLM_MODEL", "llama-3.3-70b-versatile"),
+            systemPrompt = cfg.stringOrEnv("llm.systemPrompt", "LLM_SYSTEM_PROMPT", "Ты дружелюбный ассистент. Отвечай по-русски, кратко и по делу."),
+            maxTokens = cfg.stringOrEnv("llm.maxTokens", "LLM_MAX_TOKENS", "512").toInt(),
+            temperature = cfg.stringOrEnv("llm.temperature", "LLM_TEMPERATURE", "0.7").toDouble()
         ),
         useInMemoryDb = cfg.stringOrEnv("app.useInMemoryDb", "USE_IN_MEMORY_DB", "false").toBoolean()
     )
