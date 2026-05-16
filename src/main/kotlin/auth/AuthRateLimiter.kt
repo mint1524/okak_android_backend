@@ -18,7 +18,10 @@ class AuthRateLimiter(
             list.removeAll { it < cutoff }
             if (list.size >= limit) return true
             list.add(now)
-            return false
         }
+        if (hits.size > 5000) {
+            hits.entries.removeIf { (_, v) -> synchronized(v) { v.isEmpty() } }
+        }
+        return false
     }
 }
