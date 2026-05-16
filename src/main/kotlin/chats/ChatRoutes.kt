@@ -19,6 +19,7 @@ import io.ktor.server.response.respondTextWriter
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
+import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import kotlinx.coroutines.flow.collect
@@ -65,6 +66,25 @@ fun Route.chatRoutes(
                 val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: MessageRepository.DEFAULT_PAGE
                 val page = messages.listByChatPaged(chatId, before, limit)
                 call.respond(page.map { it.toDto() })
+            }
+
+            patch("/{chatId}") {
+                val userId = call.userId() ?: return@patch call.unauthorized()
+                val chatId = call.chatId() ?: return@patch call.badId()
+                val chat = chats.findById(chatId)
+                if (chat == null || chat.userId != userId) {
+                    call.respond(HttpStatusCode.NotFound, ErrorResponse("CHAT_NOT_FOUND", "chat not found"))
+                    return@patch
+                }
+                val req = runCatching { call.receive<UpdateChatRequest>() }.getOrNull()
+                val title = req?.title?.trim()?.take(120)
+                if (title.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("BAD_TITLE", "title is empty"))
+                    return@patch
+                }
+                chats.updateTitle(chatId, title)
+                val updated = chats.findById(chatId)!!
+                call.respond(updated.toDto())
             }
 
             delete("/{chatId}") {
