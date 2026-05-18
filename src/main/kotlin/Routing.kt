@@ -1,8 +1,11 @@
 package com.example
 
+import com.example.auth.AuthRateLimiter
+import com.example.auth.RefreshTokenRepository
 import com.example.auth.TokenService
 import com.example.auth.authRoutes
 import com.example.chats.ChatRepository
+import com.example.chats.ChatTitleService
 import com.example.chats.MessageRepository
 import com.example.chats.chatRoutes
 import com.example.llm.LlmClient
@@ -22,18 +25,24 @@ data class HealthResponse(val status: String)
 fun Application.configureRouting(
     users: UserRepository,
     tokens: TokenService,
+    refreshRepo: RefreshTokenRepository,
+    rateLimiter: AuthRateLimiter,
     chats: ChatRepository,
     messages: MessageRepository,
     llm: LlmClient,
-    subs: SubscriptionRepository
+    subs: SubscriptionRepository,
+    titleService: ChatTitleService,
+    healthCheck: suspend () -> Boolean
 ) {
     routing {
         get("/health") {
-            call.respond(HealthResponse("ok"))
+            val dbOk = runCatching { healthCheck() }.getOrDefault(false)
+            if (dbOk) call.respond(HealthResponse("ok"))
+            else call.respond(io.ktor.http.HttpStatusCode.ServiceUnavailable, HealthResponse("db_unavailable"))
         }
-        authRoutes(users, tokens)
+        authRoutes(users, tokens, refreshRepo, rateLimiter)
         userRoutes(users, subs)
-        chatRoutes(chats, messages, llm, subs)
+        chatRoutes(chats, messages, llm, subs, titleService)
         subscriptionRoutes(subs)
     }
 }

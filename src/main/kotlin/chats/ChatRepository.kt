@@ -10,6 +10,7 @@ interface ChatRepository {
     fun listByUser(userId: UUID): List<Chat>
     fun delete(id: UUID): Boolean
     fun touch(id: UUID)
+    fun updateTitle(id: UUID, title: String)
 }
 
 class InMemoryChatRepository : ChatRepository {
@@ -41,5 +42,10 @@ class InMemoryChatRepository : ChatRepository {
     override fun touch(id: UUID) {
         val current = chats[id] ?: return
         chats[id] = current.copy(updatedAt = Instant.now())
+    }
+
+    override fun updateTitle(id: UUID, title: String) {
+        val current = chats[id] ?: return
+        chats[id] = current.copy(title = title)
     }
 }

@@ -1,7 +1,12 @@
 package com.example
 
+import com.example.auth.AuthRateLimiter
+import com.example.auth.ExposedRefreshTokenRepository
+import com.example.auth.InMemoryRefreshTokenRepository
+import com.example.auth.RefreshTokenRepository
 import com.example.auth.TokenService
 import com.example.chats.ChatRepository
+import com.example.chats.ChatTitleService
 import com.example.chats.ExposedChatRepository
 import com.example.chats.ExposedMessageRepository
 import com.example.chats.InMemoryChatRepository
@@ -34,21 +39,28 @@ fun Application.module() {
     val chats: ChatRepository
     val messages: MessageRepository
     val subs: SubscriptionRepository
+    val refreshes: RefreshTokenRepository
+    val healthCheck: suspend () -> Boolean
 
     if (config.useInMemoryDb) {
         users = InMemoryUserRepository()
         chats = InMemoryChatRepository()
         messages = InMemoryMessageRepository()
         subs = InMemorySubscriptionRepository()
+        refreshes = InMemoryRefreshTokenRepository()
+        healthCheck = { true }
     } else {
         DatabaseFactory.init(config.db)
         users = ExposedUserRepository()
         chats = ExposedChatRepository()
         messages = ExposedMessageRepository()
         subs = ExposedSubscriptionRepository()
+        refreshes = ExposedRefreshTokenRepository()
+        healthCheck = { DatabaseFactory.isHealthy() }
     }
 
-    val tokens = TokenService(config.jwt)
+    val tokens = TokenService(config.jwt, refreshes)
+    val rateLimiter = AuthRateLimiter()
     val llm: LlmClient = when (config.llm.provider) {
         "groq" -> {
             if (config.llm.apiKey.isBlank()) {
@@ -70,5 +82,7 @@ fun Application.module() {
     configureStatusPages()
     configureCors()
     configureSecurity(config.jwt)
-    configureRouting(users, tokens, chats, messages, llm, subs)
+    val titleService = ChatTitleService(llm, chats, log)
+
+    configureRouting(users, tokens, refreshes, rateLimiter, chats, messages, llm, subs, titleService, healthCheck)
 }

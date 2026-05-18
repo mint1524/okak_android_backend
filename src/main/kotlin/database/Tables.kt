@@ -30,6 +30,16 @@ object MessagesTable : Table("messages") {
     override val primaryKey = PrimaryKey(id)
 }
 
+object RefreshTokensTable : Table("refresh_tokens") {
+    val id = uuid("id")
+    val userId = uuid("user_id").references(UsersTable.id)
+    val tokenHash = varchar("token_hash", 128).uniqueIndex()
+    val expiresAt = timestamp("expires_at")
+    val revoked = bool("revoked")
+    val createdAt = timestamp("created_at")
+    override val primaryKey = PrimaryKey(id)
+}
+
 object SubscriptionsTable : Table("subscriptions") {
     val id = uuid("id")
     val userId = uuid("user_id").references(UsersTable.id).uniqueIndex()

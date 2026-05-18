@@ -5,6 +5,9 @@ import com.example.database.MessagesTable
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
@@ -55,6 +58,14 @@ class ExposedChatRepository : ChatRepository {
         }
     }
 
+    override fun updateTitle(id: UUID, title: String) {
+        transaction {
+            ChatsTable.update({ ChatsTable.id eq id }) {
+                it[ChatsTable.title] = title
+            }
+        }
+    }
+
     private fun ResultRow.toChat() = Chat(
         id = this[ChatsTable.id],
         userId = this[ChatsTable.userId],
@@ -84,17 +95,48 @@ class ExposedMessageRepository : MessageRepository {
         MessagesTable.selectAll()
             .where { MessagesTable.chatId eq chatId }
             .orderBy(MessagesTable.createdAt to SortOrder.ASC)
-            .map { row ->
-                Message(
-                    id = row[MessagesTable.id],
-                    chatId = row[MessagesTable.chatId],
-                    role = MessageRole.valueOf(row[MessagesTable.role].uppercase()),
-                    content = row[MessagesTable.content],
-                    tokensUsed = row[MessagesTable.tokensUsed],
-                    createdAt = row[MessagesTable.createdAt]
-                )
-            }
+            .map { it.toMessage() }
     }
+
+    override fun listByChatPaged(chatId: UUID, before: UUID?, limit: Int): List<Message> = transaction {
+        val cap = limit.coerceAtMost(MessageRepository.MAX_PAGE)
+        if (before == null) {
+            MessagesTable.selectAll()
+                .where { MessagesTable.chatId eq chatId }
+                .orderBy(MessagesTable.createdAt to SortOrder.DESC)
+                .limit(cap)
+                .map { it.toMessage() }
+                .reversed()
+        } else {
+            val cutoff = MessagesTable.selectAll()
+                .where { MessagesTable.id eq before }
+                .firstOrNull()
+                ?.get(MessagesTable.createdAt)
+                ?: return@transaction emptyList()
+            MessagesTable.selectAll()
+                .where { (MessagesTable.chatId eq chatId) and (MessagesTable.createdAt less cutoff) }
+                .orderBy(MessagesTable.createdAt to SortOrder.DESC)
+                .limit(cap)
+                .map { it.toMessage() }
+                .reversed()
+        }
+    }
+
+    override fun countByChat(chatId: UUID): Int = transaction {
+        MessagesTable.selectAll()
+            .where { MessagesTable.chatId eq chatId }
+            .count()
+            .toInt()
+    }
+
+    private fun ResultRow.toMessage() = Message(
+        id = this[MessagesTable.id],
+        chatId = this[MessagesTable.chatId],
+        role = MessageRole.valueOf(this[MessagesTable.role].uppercase()),
+        content = this[MessagesTable.content],
+        tokensUsed = this[MessagesTable.tokensUsed],
+        createdAt = this[MessagesTable.createdAt]
+    )
 
     override fun deleteByChat(chatId: UUID) {
         transaction {

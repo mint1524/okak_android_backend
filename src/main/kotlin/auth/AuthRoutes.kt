@@ -9,11 +9,20 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 
-fun Route.authRoutes(users: UserRepository, tokens: TokenService) {
+fun Route.authRoutes(
+    users: UserRepository,
+    tokens: TokenService,
+    refreshRepo: RefreshTokenRepository,
+    rateLimiter: AuthRateLimiter
+) {
     route("/auth") {
         post("/register") {
+            if (rateLimiter.deny(call.remoteAddress(), "register")) {
+                call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("RATE_LIMITED", "too many requests"))
+                return@post
+            }
             val req = call.receive<AuthRequest>()
-            val email = req.email.trim()
+            val email = req.email.trim().lowercase()
             val password = req.password
 
             if (!isEmailValid(email)) {
@@ -24,6 +33,10 @@ fun Route.authRoutes(users: UserRepository, tokens: TokenService) {
                 call.respond(HttpStatusCode.BadRequest, ErrorResponse("BAD_PASSWORD", "password is too short"))
                 return@post
             }
+            if (password.length > 200) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("BAD_PASSWORD", "password is too long"))
+                return@post
+            }
 
             val existing = users.findByEmail(email)
             if (existing != null) {
@@ -32,11 +45,15 @@ fun Route.authRoutes(users: UserRepository, tokens: TokenService) {
             }
 
             val user = users.create(email, Passwords.hash(password))
-            val token = tokens.issue(user).token
-            call.respond(HttpStatusCode.Created, AuthResponse(token))
+            val pair = tokens.issuePair(user)
+            call.respond(HttpStatusCode.Created, pair.toResponse())
         }
 
         post("/login") {
+            if (rateLimiter.deny(call.remoteAddress(), "login")) {
+                call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("RATE_LIMITED", "too many requests"))
+                return@post
+            }
             val req = call.receive<AuthRequest>()
             val email = req.email.trim().lowercase()
             val user = users.findByEmail(email)
@@ -44,11 +61,36 @@ fun Route.authRoutes(users: UserRepository, tokens: TokenService) {
                 call.respond(HttpStatusCode.Unauthorized, ErrorResponse("BAD_CREDENTIALS", "wrong email or password"))
                 return@post
             }
-            val token = tokens.issue(user).token
-            call.respond(AuthResponse(token))
+            val pair = tokens.issuePair(user)
+            call.respond(pair.toResponse())
+        }
+
+        post("/refresh") {
+            val req = call.receive<RefreshRequest>()
+            val record = refreshRepo.findActiveByRawToken(req.refreshToken)
+            if (record == null) {
+                call.respond(HttpStatusCode.Unauthorized, ErrorResponse("BAD_REFRESH", "refresh token invalid or expired"))
+                return@post
+            }
+            val user = users.findById(record.userId)
+            if (user == null) {
+                call.respond(HttpStatusCode.Unauthorized, ErrorResponse("BAD_REFRESH", "user not found"))
+                return@post
+            }
+            val pair = tokens.rotate(user, record)
+            call.respond(pair.toResponse())
         }
     }
 }
+
+private fun TokenPair.toResponse() = AuthResponse(
+    accessToken = accessToken,
+    refreshToken = refreshToken,
+    expiresAt = accessExpiresAt.toString()
+)
+
+private fun io.ktor.server.application.ApplicationCall.remoteAddress(): String =
+    request.local.remoteAddress
 
 private val emailRegex = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
 
