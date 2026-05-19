@@ -20,7 +20,7 @@ fun Application.configureStatusPages() {
             call.application.log.error("unhandled error", cause)
             call.respond(
                 HttpStatusCode.InternalServerError,
-                ErrorResponse("INTERNAL_ERROR", cause.message ?: "internal error")
+                ErrorResponse("INTERNAL_ERROR", "internal error")
             )
         }
     }

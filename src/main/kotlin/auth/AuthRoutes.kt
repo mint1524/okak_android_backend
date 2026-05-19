@@ -61,6 +61,7 @@ fun Route.authRoutes(
                 call.respond(HttpStatusCode.Unauthorized, ErrorResponse("BAD_CREDENTIALS", "wrong email or password"))
                 return@post
             }
+            refreshRepo.revokeAllForUser(user.id)
             val pair = tokens.issuePair(user)
             call.respond(pair.toResponse())
         }
