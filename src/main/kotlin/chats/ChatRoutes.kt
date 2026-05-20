@@ -116,6 +116,10 @@ fun Route.chatRoutes(
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse("EMPTY_MESSAGE", "message is empty"))
                     return@post
                 }
+                if (text.length > MAX_MESSAGE_LEN) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("MESSAGE_TOO_LONG", "максимум $MAX_MESSAGE_LEN символов"))
+                    return@post
+                }
 
                 val userMsg = messages.add(chatId, MessageRole.USER, text)
                 val isFirstMessage = messages.countByChat(chatId) == 1

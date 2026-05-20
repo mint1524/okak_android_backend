@@ -21,7 +21,7 @@ sealed class LlmStreamEvent {
 class MockLlmClient : LlmClient {
     override suspend fun complete(history: List<LlmMessage>): LlmResult {
         val last = history.lastOrNull { it.role == "user" }?.content ?: "..."
-        val reply = buildMockReply(last)
+        val reply = if (isTitleRequest(history)) buildMockTitle(last) else buildMockReply(last)
         val tokens = (last.length + reply.length) / 4
         return LlmResult(reply, tokens)
     }
@@ -34,6 +34,17 @@ class MockLlmClient : LlmClient {
             emit(LlmStreamEvent.Delta(chunk))
         }
         emit(LlmStreamEvent.Done((last.length + reply.length) / 4))
+    }
+
+    private fun isTitleRequest(history: List<LlmMessage>): Boolean {
+        val sys = history.firstOrNull { it.role == "system" }?.content?.lowercase() ?: return false
+        return "заголов" in sys
+    }
+
+    private fun buildMockTitle(last: String): String {
+        val words = last.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.take(4)
+        val title = words.joinToString(" ").take(40)
+        return title.ifBlank { "Новый чат" }
     }
 
     private fun buildMockReply(last: String) = buildString {
