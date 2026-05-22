@@ -16,6 +16,11 @@ data class CreateChatRequest(
 )
 
 @Serializable
+data class UpdateChatRequest(
+    val title: String
+)
+
+@Serializable
 data class MessageDto(
     val id: String,
     val role: String,
