@@ -14,6 +14,12 @@ import java.util.UUID
 
 class ExposedSubscriptionRepository : SubscriptionRepository {
 
+    override fun findByUser(userId: UUID): Subscription? = transaction {
+        SubscriptionsTable.selectAll()
+            .where { SubscriptionsTable.userId eq userId }
+            .firstOrNull()?.toSubscription()
+    }
+
     override fun findActive(userId: UUID): Subscription? = transaction {
         val row = SubscriptionsTable.selectAll()
             .where { SubscriptionsTable.userId eq userId }

@@ -30,7 +30,7 @@ data class VerifyRequest(
     val purchaseToken: String
 )
 
-fun Route.subscriptionRoutes(subs: SubscriptionRepository) {
+fun Route.subscriptionRoutes(subs: SubscriptionRepository, verifier: GooglePlayVerifier) {
 
     route("/subscriptions") {
         get("/plans") {
@@ -44,21 +44,42 @@ fun Route.subscriptionRoutes(subs: SubscriptionRepository) {
                     call.respond(HttpStatusCode.Unauthorized, ErrorResponse("UNAUTHORIZED", "no token"))
                     return@get
                 }
-                val sub = subs.findActive(userId)
-                if (sub == null) {
+                val activeSub = subs.findActive(userId)
+                if (activeSub != null) {
+                    val plan = Plans.byId(activeSub.planId)
+                    call.respond(
+                        SubscriptionStatusDto(
+                            status = "active",
+                            plan = plan?.name,
+                            expiresAt = activeSub.expiresAt.toString(),
+                            requestLimit = plan?.requestLimit,
+                            requestsUsed = activeSub.requestsUsed,
+                            tokenLimit = plan?.tokenLimit,
+                            tokensUsed = activeSub.tokensUsed
+                        )
+                    )
+                    return@get
+                }
+                val anySub = subs.findByUser(userId)
+                if (anySub == null) {
                     call.respond(SubscriptionStatusDto("inactive", null, null, null, null, null, null))
                     return@get
                 }
-                val plan = Plans.byId(sub.planId)
+                val statusStr = when (anySub.status) {
+                    Subscription.Status.EXPIRED -> "expired"
+                    Subscription.Status.CANCELLED -> "cancelled"
+                    else -> "inactive"
+                }
+                val plan = Plans.byId(anySub.planId)
                 call.respond(
                     SubscriptionStatusDto(
-                        status = "active",
+                        status = statusStr,
                         plan = plan?.name,
-                        expiresAt = sub.expiresAt.toString(),
+                        expiresAt = anySub.expiresAt.toString(),
                         requestLimit = plan?.requestLimit,
-                        requestsUsed = sub.requestsUsed,
+                        requestsUsed = anySub.requestsUsed,
                         tokenLimit = plan?.tokenLimit,
-                        tokensUsed = sub.tokensUsed
+                        tokensUsed = anySub.tokensUsed
                     )
                 )
             }
@@ -75,9 +96,13 @@ fun Route.subscriptionRoutes(subs: SubscriptionRepository) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse("UNKNOWN_PRODUCT", "unknown productId"))
                     return@post
                 }
-                // TODO: настоящая проверка через Google Play Developer API
                 if (req.purchaseToken.isBlank()) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse("BAD_TOKEN", "empty purchase token"))
+                    return@post
+                }
+                val verification = verifier.verifySubscription(req.productId, req.purchaseToken)
+                if (verification is GooglePlayVerifier.VerificationResult.Invalid) {
+                    call.respond(HttpStatusCode.PaymentRequired, ErrorResponse("INVALID_PURCHASE", verification.reason))
                     return@post
                 }
                 val sub = subs.upsertFromPurchase(userId, plan, req.purchaseToken)

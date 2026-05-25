@@ -28,10 +28,16 @@ data class LlmConfig(
     val temperature: Double
 )
 
+data class BillingConfig(
+    val packageName: String,
+    val credentialsPath: String?
+)
+
 data class AppConfig(
     val jwt: JwtConfig,
     val db: DbConfig,
     val llm: LlmConfig,
+    val billing: BillingConfig,
     val useInMemoryDb: Boolean
 )
 
@@ -52,13 +58,17 @@ fun Application.loadConfig(): AppConfig {
             driver = cfg.stringOrEnv("db.driver", "DB_DRIVER", "org.postgresql.Driver")
         ),
         llm = LlmConfig(
-            provider = cfg.stringOrEnv("llm.provider", "LLM_PROVIDER", "mock").lowercase(),
+            provider = cfg.stringOrEnv("llm.provider", "LLM_PROVIDER", "groq").lowercase(),
             apiKey = cfg.stringOrEnv("llm.apiKey", "LLM_API_KEY", ""),
             baseUrl = cfg.stringOrEnv("llm.baseUrl", "LLM_BASE_URL", "https://api.groq.com/openai/v1"),
             model = cfg.stringOrEnv("llm.model", "LLM_MODEL", "llama-3.3-70b-versatile"),
             systemPrompt = cfg.stringOrEnv("llm.systemPrompt", "LLM_SYSTEM_PROMPT", "Ты дружелюбный ассистент. Отвечай по-русски, кратко и по делу."),
-            maxTokens = cfg.stringOrEnv("llm.maxTokens", "LLM_MAX_TOKENS", "512").toInt(),
+            maxTokens = cfg.stringOrEnv("llm.maxTokens", "LLM_MAX_TOKENS", "2048").toInt(),
             temperature = cfg.stringOrEnv("llm.temperature", "LLM_TEMPERATURE", "0.7").toDouble()
+        ),
+        billing = BillingConfig(
+            packageName = cfg.stringOrEnv("billing.packageName", "GOOGLE_PLAY_PACKAGE_NAME", "club.okak.app"),
+            credentialsPath = cfg.stringOrEnv("billing.credentialsPath", "GOOGLE_PLAY_CREDENTIALS_PATH", "").ifBlank { null }
         ),
         useInMemoryDb = cfg.stringOrEnv("app.useInMemoryDb", "USE_IN_MEMORY_DB", "false").toBoolean()
     )

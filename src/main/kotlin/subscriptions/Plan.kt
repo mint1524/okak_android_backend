@@ -19,18 +19,18 @@ object Plans {
             id = "basic",
             name = "Basic",
             price = 299.0,
-            requestLimit = 100,
-            tokenLimit = 100_000,
-            modelName = "llm-basic",
+            requestLimit = 200,
+            tokenLimit = 200_000,
+            modelName = "llama-3.1-8b-instant",
             productId = "basic_monthly"
         ),
         Plan(
             id = "pro",
             name = "Pro",
-            price = 599.0,
-            requestLimit = 500,
-            tokenLimit = 500_000,
-            modelName = "llm-pro",
+            price = 699.0,
+            requestLimit = 1000,
+            tokenLimit = 1_000_000,
+            modelName = "llama-3.3-70b-versatile",
             productId = "pro_monthly"
         )
     )

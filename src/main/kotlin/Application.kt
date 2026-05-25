@@ -23,6 +23,7 @@ import com.example.plugins.configureSecurity
 import com.example.plugins.configureSerialization
 import com.example.plugins.configureStatusPages
 import com.example.subscriptions.ExposedSubscriptionRepository
+import com.example.subscriptions.GooglePlayVerifier
 import com.example.subscriptions.InMemorySubscriptionRepository
 import com.example.subscriptions.SubscriptionRepository
 import com.example.users.ExposedUserRepository
@@ -62,12 +63,12 @@ fun Application.module() {
     val tokens = TokenService(config.jwt, refreshes)
     val rateLimiter = AuthRateLimiter()
     val llm: LlmClient = when (config.llm.provider) {
-        "groq" -> {
+        "openai", "groq" -> {
             if (config.llm.apiKey.isBlank()) {
-                log.warn("LLM_PROVIDER=groq, но LLM_API_KEY пустой — откатываюсь на mock")
+                log.warn("LLM_PROVIDER=${config.llm.provider}, но LLM_API_KEY пустой — откатываюсь на mock")
                 MockLlmClient()
             } else {
-                log.info("LLM provider=groq, model=${config.llm.model}")
+                log.info("LLM provider=${config.llm.provider}, baseUrl=${config.llm.baseUrl}, model=${config.llm.model}")
                 GroqLlmClient(config.llm)
             }
         }
@@ -77,6 +78,8 @@ fun Application.module() {
         }
     }
 
+    val verifier = GooglePlayVerifier(config.billing.packageName, config.billing.credentialsPath)
+
     configureMonitoring()
     configureSerialization()
     configureStatusPages()
@@ -84,5 +87,5 @@ fun Application.module() {
     configureSecurity(config.jwt)
     val titleService = ChatTitleService(llm, chats, log)
 
-    configureRouting(users, tokens, refreshes, rateLimiter, chats, messages, llm, subs, titleService, healthCheck)
+    configureRouting(users, tokens, refreshes, rateLimiter, chats, messages, llm, subs, titleService, verifier, healthCheck)
 }

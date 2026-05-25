@@ -9,6 +9,7 @@ import com.example.chats.ChatTitleService
 import com.example.chats.MessageRepository
 import com.example.chats.chatRoutes
 import com.example.llm.LlmClient
+import com.example.subscriptions.GooglePlayVerifier
 import com.example.subscriptions.SubscriptionRepository
 import com.example.subscriptions.subscriptionRoutes
 import com.example.users.UserRepository
@@ -32,6 +33,7 @@ fun Application.configureRouting(
     llm: LlmClient,
     subs: SubscriptionRepository,
     titleService: ChatTitleService,
+    verifier: GooglePlayVerifier,
     healthCheck: suspend () -> Boolean
 ) {
     routing {
@@ -43,6 +45,6 @@ fun Application.configureRouting(
         authRoutes(users, tokens, refreshRepo, rateLimiter)
         userRoutes(users, subs)
         chatRoutes(chats, messages, llm, subs, titleService)
-        subscriptionRoutes(subs)
+        subscriptionRoutes(subs, verifier)
     }
 }

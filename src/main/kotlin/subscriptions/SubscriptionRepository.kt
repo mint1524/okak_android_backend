@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 interface SubscriptionRepository {
     fun findActive(userId: UUID): Subscription?
+    fun findByUser(userId: UUID): Subscription?
     fun upsertFromPurchase(userId: UUID, plan: Plan, purchaseToken: String): Subscription
     fun incrementUsage(userId: UUID, requests: Int, tokens: Int)
 }
@@ -19,6 +20,8 @@ class InMemorySubscriptionRepository : SubscriptionRepository {
         val s = byUser[userId] ?: return null
         return if (s.isActive()) s else null
     }
+
+    override fun findByUser(userId: UUID): Subscription? = byUser[userId]
 
     override fun upsertFromPurchase(userId: UUID, plan: Plan, purchaseToken: String): Subscription {
         val now = Instant.now()

@@ -144,7 +144,7 @@ fun Route.chatRoutes(
                 val userMsg = messages.add(chatId, MessageRole.USER, text)
                 val isFirstMessage = messages.countByChat(chatId) == 1
                 val history = messages.listByChat(chatId).map { LlmMessage(it.role.name.lowercase(), it.content) }
-                val result = llm.complete(history)
+                val result = llm.complete(history, plan.modelName)
                 val assistantMsg = messages.add(chatId, MessageRole.ASSISTANT, result.content, result.tokensUsed)
                 chats.touch(chatId)
                 subs.incrementUsage(userId, requests = 1, tokens = result.tokensUsed)
@@ -196,6 +196,7 @@ fun Route.chatRoutes(
                 val userMsg = messages.add(chatId, MessageRole.USER, text)
                 val isFirstMessage = messages.countByChat(chatId) == 1
                 val history = messages.listByChat(chatId).map { LlmMessage(it.role.name.lowercase(), it.content) }
+                val planModel = plan.modelName
 
                 call.respondTextWriter(contentType = ContentType.Text.EventStream) {
                     suspend fun send(type: String, payload: JsonObject?) {
@@ -217,7 +218,7 @@ fun Route.chatRoutes(
                     val acc = StringBuilder()
                     var totalTokens = 0
                     var hadError = false
-                    llm.stream(history).collect { event ->
+                    llm.stream(history, planModel).collect { event ->
                         when (event) {
                             is LlmStreamEvent.Delta -> {
                                 acc.append(event.content)

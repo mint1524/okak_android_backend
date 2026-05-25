@@ -5,8 +5,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 interface LlmClient {
-    suspend fun complete(history: List<LlmMessage>): LlmResult
-    fun stream(history: List<LlmMessage>): Flow<LlmStreamEvent>
+    suspend fun complete(history: List<LlmMessage>, model: String? = null): LlmResult
+    fun stream(history: List<LlmMessage>, model: String? = null): Flow<LlmStreamEvent>
 }
 
 data class LlmMessage(val role: String, val content: String)
@@ -19,14 +19,14 @@ sealed class LlmStreamEvent {
 }
 
 class MockLlmClient : LlmClient {
-    override suspend fun complete(history: List<LlmMessage>): LlmResult {
+    override suspend fun complete(history: List<LlmMessage>, model: String?): LlmResult {
         val last = history.lastOrNull { it.role == "user" }?.content ?: "..."
         val reply = if (isTitleRequest(history)) buildMockTitle(last) else buildMockReply(last)
         val tokens = (last.length + reply.length) / 4
         return LlmResult(reply, tokens)
     }
 
-    override fun stream(history: List<LlmMessage>): Flow<LlmStreamEvent> = flow {
+    override fun stream(history: List<LlmMessage>, model: String?): Flow<LlmStreamEvent> = flow {
         val last = history.lastOrNull { it.role == "user" }?.content ?: "..."
         val reply = buildMockReply(last)
         reply.chunked(4).forEach { chunk ->
