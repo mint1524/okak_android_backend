@@ -13,9 +13,42 @@ fun Route.authRoutes(
     users: UserRepository,
     tokens: TokenService,
     refreshRepo: RefreshTokenRepository,
-    rateLimiter: AuthRateLimiter
+    rateLimiter: AuthRateLimiter,
+    emailVerification: EmailVerificationService
 ) {
     route("/auth") {
+        post("/register/code") {
+            if (rateLimiter.deny(call.remoteAddress(), "register-code")) {
+                call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("RATE_LIMITED", "too many requests"))
+                return@post
+            }
+            val req = call.receive<EmailCodeRequest>()
+            val email = req.email.trim().lowercase()
+
+            if (!isEmailValid(email)) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("BAD_EMAIL", "email is not valid"))
+                return@post
+            }
+            if (users.findByEmail(email) != null) {
+                call.respond(HttpStatusCode.Conflict, ErrorResponse("EMAIL_TAKEN", "email already registered"))
+                return@post
+            }
+
+            val result = emailVerification.issue(email)
+            if (!result.sent && emailVerification.verificationRequired && result.debugCode == null) {
+                call.respond(HttpStatusCode.ServiceUnavailable, ErrorResponse("MAIL_UNAVAILABLE", "email service unavailable"))
+                return@post
+            }
+
+            call.respond(
+                EmailCodeResponse(
+                    sent = result.sent,
+                    expiresInMinutes = result.expiresInMinutes,
+                    debugCode = result.debugCode
+                )
+            )
+        }
+
         post("/register") {
             if (rateLimiter.deny(call.remoteAddress(), "register")) {
                 call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("RATE_LIMITED", "too many requests"))
@@ -41,6 +74,10 @@ fun Route.authRoutes(
             val existing = users.findByEmail(email)
             if (existing != null) {
                 call.respond(HttpStatusCode.Conflict, ErrorResponse("EMAIL_TAKEN", "email already registered"))
+                return@post
+            }
+            if (!emailVerification.verify(email, req.verificationCode)) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("BAD_VERIFICATION_CODE", "verification code is invalid or expired"))
                 return@post
             }
 

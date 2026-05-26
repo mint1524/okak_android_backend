@@ -1,8 +1,10 @@
 package com.example
 
 import com.example.auth.AuthRateLimiter
+import com.example.auth.EmailVerificationService
 import com.example.auth.ExposedRefreshTokenRepository
 import com.example.auth.InMemoryRefreshTokenRepository
+import com.example.auth.MailServiceClient
 import com.example.auth.RefreshTokenRepository
 import com.example.auth.TokenService
 import com.example.chats.ChatRepository
@@ -79,6 +81,8 @@ fun Application.module() {
     }
 
     val verifier = GooglePlayVerifier(config.billing.packageName, config.billing.credentialsPath)
+    val mailClient = MailServiceClient(config.mail)
+    val emailVerification = EmailVerificationService(config.mail, mailClient)
 
     configureMonitoring()
     configureSerialization()
@@ -87,5 +91,5 @@ fun Application.module() {
     configureSecurity(config.jwt)
     val titleService = ChatTitleService(llm, chats, log)
 
-    configureRouting(users, tokens, refreshes, rateLimiter, chats, messages, llm, subs, titleService, verifier, healthCheck)
+    configureRouting(users, tokens, refreshes, rateLimiter, chats, messages, llm, subs, titleService, verifier, emailVerification, healthCheck)
 }

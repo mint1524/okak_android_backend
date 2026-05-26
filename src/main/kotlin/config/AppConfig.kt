@@ -33,11 +33,21 @@ data class BillingConfig(
     val credentialsPath: String?
 )
 
+data class MailConfig(
+    val baseUrl: String,
+    val token: String,
+    val hmacSecret: String,
+    val verificationRequired: Boolean,
+    val devReturnCode: Boolean,
+    val codeTtlMinutes: Long
+)
+
 data class AppConfig(
     val jwt: JwtConfig,
     val db: DbConfig,
     val llm: LlmConfig,
     val billing: BillingConfig,
+    val mail: MailConfig,
     val useInMemoryDb: Boolean
 )
 
@@ -69,6 +79,16 @@ fun Application.loadConfig(): AppConfig {
         billing = BillingConfig(
             packageName = cfg.stringOrEnv("billing.packageName", "GOOGLE_PLAY_PACKAGE_NAME", "club.okak.app"),
             credentialsPath = cfg.stringOrEnv("billing.credentialsPath", "GOOGLE_PLAY_CREDENTIALS_PATH", "").ifBlank { null }
+        ),
+        mail = MailConfig(
+            baseUrl = cfg.stringOrEnv("mail.baseUrl", "MAIL_SERVICE_BASE_URL", ""),
+            token = cfg.stringOrEnv("mail.token", "MAIL_SERVICE_TOKEN", ""),
+            hmacSecret = cfg.stringOrEnv("mail.hmacSecret", "MAIL_REQUEST_HMAC_SECRET", "").ifBlank {
+                cfg.stringOrEnv("mail.token", "MAIL_SERVICE_TOKEN", "")
+            },
+            verificationRequired = cfg.stringOrEnv("mail.verificationRequired", "MAIL_VERIFICATION_REQUIRED", "false").toBoolean(),
+            devReturnCode = cfg.stringOrEnv("mail.devReturnCode", "MAIL_DEV_RETURN_CODE", "false").toBoolean(),
+            codeTtlMinutes = cfg.stringOrEnv("mail.codeTtlMinutes", "MAIL_CODE_TTL_MINUTES", "10").toLong()
         ),
         useInMemoryDb = cfg.stringOrEnv("app.useInMemoryDb", "USE_IN_MEMORY_DB", "false").toBoolean()
     )

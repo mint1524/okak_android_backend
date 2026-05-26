@@ -1,6 +1,7 @@
 package com.example
 
 import com.example.auth.AuthRateLimiter
+import com.example.auth.EmailVerificationService
 import com.example.auth.RefreshTokenRepository
 import com.example.auth.TokenService
 import com.example.auth.authRoutes
@@ -34,6 +35,7 @@ fun Application.configureRouting(
     subs: SubscriptionRepository,
     titleService: ChatTitleService,
     verifier: GooglePlayVerifier,
+    emailVerification: EmailVerificationService,
     healthCheck: suspend () -> Boolean
 ) {
     routing {
@@ -42,7 +44,7 @@ fun Application.configureRouting(
             if (dbOk) call.respond(HealthResponse("ok"))
             else call.respond(io.ktor.http.HttpStatusCode.ServiceUnavailable, HealthResponse("db_unavailable"))
         }
-        authRoutes(users, tokens, refreshRepo, rateLimiter)
+        authRoutes(users, tokens, refreshRepo, rateLimiter, emailVerification)
         userRoutes(users, subs)
         chatRoutes(chats, messages, llm, subs, titleService)
         subscriptionRoutes(subs, verifier)

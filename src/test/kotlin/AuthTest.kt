@@ -81,4 +81,39 @@ class AuthTest {
         val noToken = client.get("/user/me")
         assertEquals(HttpStatusCode.Unauthorized, noToken.status)
     }
+
+    @Test
+    fun `register can require email verification code`() = testApplication {
+        environment {
+            config = io.ktor.server.config.MapApplicationConfig(
+                "app.useInMemoryDb" to "true",
+                "mail.verificationRequired" to "true",
+                "mail.devReturnCode" to "true"
+            )
+        }
+        application { module() }
+        val client = createClient {
+            install(ContentNegotiation) { json() }
+        }
+
+        val codeResp = client.post("/auth/register/code") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"email":"coded@example.com"}""")
+        }
+        assertEquals(HttpStatusCode.OK, codeResp.status)
+        val code = Json.parseToJsonElement(codeResp.bodyAsText())
+            .let { (it as kotlinx.serialization.json.JsonObject)["debugCode"]!!.jsonPrimitive.content }
+
+        val noCode = client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"email":"coded@example.com","password":"qwerty123"}""")
+        }
+        assertEquals(HttpStatusCode.BadRequest, noCode.status)
+
+        val regResp = client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"email":"coded@example.com","password":"qwerty123","verificationCode":"$code"}""")
+        }
+        assertEquals(HttpStatusCode.Created, regResp.status)
+    }
 }
