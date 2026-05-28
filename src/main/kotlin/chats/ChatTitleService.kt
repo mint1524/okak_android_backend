@@ -21,7 +21,7 @@ class ChatTitleService(
         }
     }
 
-    private suspend fun generateAndSet(chatId: UUID, userMessage: String) {
+    suspend fun generateAndSet(chatId: UUID, userMessage: String): String {
         val prompt = listOf(
             LlmMessage(
                 "system",
@@ -32,6 +32,7 @@ class ChatTitleService(
         val raw = runCatching { llm.complete(prompt).content }.getOrDefault("")
         val cleaned = sanitize(raw).ifBlank { fallbackFromUserMessage(userMessage) }
         chats.updateTitle(chatId, cleaned)
+        return cleaned
     }
 
     private fun sanitize(raw: String): String = raw

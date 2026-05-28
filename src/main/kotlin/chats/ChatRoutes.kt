@@ -149,7 +149,7 @@ fun Route.chatRoutes(
                 chats.touch(chatId)
                 subs.incrementUsage(userId, requests = 1, tokens = result.tokensUsed)
 
-                if (isFirstMessage) titleService.scheduleAutoTitle(call.application, chatId, text)
+                if (isFirstMessage) titleService.generateAndSet(chatId, text)
 
                 call.respond(
                     SendMessageResponse(
@@ -249,9 +249,15 @@ fun Route.chatRoutes(
                         put("createdAt", assistantMsg.createdAt.toString())
                         put("tokensUsed", tokens)
                     })
+                    if (isFirstMessage) {
+                        val title = titleService.generateAndSet(chatId, text)
+                        send("chat_title", buildJsonObject {
+                            put("chatId", chatId.toString())
+                            put("title", title)
+                        })
+                    }
                     send("done", null)
                 }
-                if (isFirstMessage) titleService.scheduleAutoTitle(call.application, chatId, text)
             }
         }
     }
